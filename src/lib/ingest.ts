@@ -141,6 +141,7 @@ const fetchers: Fetcher[] = [
 
 function toJob(r: Raw, f: Fetcher): ImportedJob | null {
   if (!r.title || !r.company || typeof r.url !== "string" || !r.url.startsWith("https://")) return null;
+  if (AGGREGATORS.test(r.company)) return null;
   const category = categoryFor(r.title);
   if (!category) return null;
   const place = placeFor(r.locations.filter(Boolean), { countryCode: r.countryCode, bareRemoteIsEurope: r.bareRemoteIsEurope });
@@ -161,6 +162,9 @@ function toJob(r: Raw, f: Fetcher): ImportedJob | null {
     createdAt: r.published,
   };
 }
+
+// Job aggregators re-post other companies' jobs; nobody there can refer you.
+const AGGREGATORS = /\b(jobgether|jobleads|jooble|talent\.com)\b/i;
 
 const EUROPE_CODES = new Set([
   "NL", "BE", "DE", "FR", "IE", "GB", "ES", "PT", "IT", "PL", "AT", "CH", "SE", "DK", "NO", "FI",
