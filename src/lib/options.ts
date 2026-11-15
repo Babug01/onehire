@@ -15,10 +15,18 @@ export const COUNTRIES: Record<string, string> = {
   DK: "Denmark",
   NO: "Norway",
   FI: "Finland",
+  CZ: "Czechia",
+  RO: "Romania",
+  GR: "Greece",
+  HU: "Hungary",
+  EE: "Estonia",
+  LT: "Lithuania",
+  LU: "Luxembourg",
   EU: "EU-wide / Remote",
 };
 
 export const CATEGORIES = [
+  "Software Engineering",
   "Frontend",
   "Backend",
   "Full-stack",
@@ -33,9 +41,9 @@ export const CATEGORIES = [
   "Other",
 ];
 
-export const SENIORITY = ["Intern / Graduate", "Junior", "Medior", "Senior", "Staff / Principal", "Lead / Manager"];
+export const SENIORITY = ["Intern / Graduate", "Junior", "Medior", "Senior", "Staff / Principal", "Lead / Manager", "Not specified"];
 
-export const WORK_MODES = ["On-site", "Hybrid", "Remote"];
+export const WORK_MODES = ["On-site", "Hybrid", "Remote", "Not specified"];
 
 export const CITIES = [
   "Amsterdam",

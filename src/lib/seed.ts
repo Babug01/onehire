@@ -2,9 +2,11 @@ import type { Post } from "./types";
 
 const daysAgo = (n: number) => new Date(Date.now() - n * 86_400_000);
 
-const sample = (p: Omit<Post, "status" | "platform" | "authorName">): Post => ({
+const sample = (p: Omit<Post, "status" | "platform" | "authorName" | "source" | "lastSeenAt">): Post => ({
   ...p,
   status: "approved",
+  source: "community",
+  lastSeenAt: p.createdAt,
   platform: p.sourceUrl.includes("x.com") ? "X" : "LinkedIn",
   authorName: "Sample author",
 });

@@ -13,15 +13,20 @@ export default function AboutPage() {
         or X that their team is hiring and that they are happy to refer. Those posts are easy to miss. This site
         lists them in one place, filtered by role, city, country, seniority and work mode.
       </p>
+      <p>
+        Next to referral posts, we import open tech roles in Europe every day from the public job boards of companies
+        such as Adyen, Mollie, Elastic and Spotify (Greenhouse, Lever and Ashby) and from Arbeitnow. For those jobs,
+        find someone at the company on LinkedIn and ask for a referral before you apply.
+      </p>
       <h2>How it works</h2>
       <ol>
-        <li>Browse or filter the posts.</li>
-        <li>Open the original post on LinkedIn or X.</li>
-        <li>Message the author with a short intro and your CV.</li>
+        <li>Browse or filter referral posts and company jobs.</li>
+        <li>Open the original post, or the job on the company careers page.</li>
+        <li>Message the post author, or someone at the company, with a short intro and your CV.</li>
       </ol>
       <p>
-        We never take applications or act as a recruiter. Posts are shared by the community, reviewed before they
-        appear, and hidden after {MAX_AGE_DAYS} days.
+        We never take applications or act as a recruiter. Referral posts are shared by the community, reviewed before
+        they appear, and hidden after {MAX_AGE_DAYS} days. Company jobs disappear when they close.
       </p>
       <h2>Privacy</h2>
       <p>

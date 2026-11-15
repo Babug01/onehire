@@ -12,8 +12,12 @@ export type Post = {
   authorName: string;
   description: string;
   status: string;
+  source: string;
   createdAt: Date;
+  lastSeenAt: Date;
 };
+
+export type Kind = "" | "referral" | "jobs";
 
 export type Filters = {
   q: string;
@@ -22,4 +26,6 @@ export type Filters = {
   category: string;
   seniority: string;
   workMode: string;
+  kind: Kind;
+  page: number;
 };

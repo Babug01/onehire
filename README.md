@@ -24,6 +24,7 @@ Moderate submissions at `/admin`.
 
 ## Notes
 
-- No scraping: LinkedIn and X do not allow it. Posts come from community submissions.
-- Approved posts are hidden after 45 days.
+- No scraping: LinkedIn and X do not allow it. Referral posts come from community submissions.
+- Company jobs: `src/lib/ingest.ts` imports Europe-based tech roles daily (Vercel Cron, `vercel.json`) from public Greenhouse, Lever and Ashby job boards and the Arbeitnow API. The cron route needs `CRON_SECRET`. Add a company by adding its board token to `ingest.ts`.
+- Approved referral posts are hidden after 45 days; imported jobs when the import has not seen them for 3 days.
 - Spam protection is a honeypot field plus moderation. Add rate limiting (for example Vercel Firewall rules) if spam grows.

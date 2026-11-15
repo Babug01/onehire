@@ -15,18 +15,26 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <header className="site-header">
           <div className="container header-row">
             <Link href="/" className="brand">
-              Tech Referrals <span>EU</span>
+              <span className="brand-mark" aria-hidden="true">
+                TR
+              </span>
+              <span>
+                TechReferrals <span className="eu">EU</span>
+              </span>
             </Link>
-            <nav>
+            <nav className="main-nav">
               <Link href="/">Browse</Link>
-              <Link href="/submit">Share a post</Link>
               <Link href="/about">About</Link>
+              <Link href="/submit" className="nav-cta">
+                Share a referral post
+              </Link>
             </nav>
           </div>
         </header>
         <main className="container">{children}</main>
         <footer className="site-footer container">
-          We link to public posts and never take applications. Contact the author directly.
+          We link to public posts and company careers pages and never take applications. Company jobs are imported
+          daily from public job boards (Greenhouse, Lever, Ashby) and Arbeitnow.
         </footer>
       </body>
     </html>

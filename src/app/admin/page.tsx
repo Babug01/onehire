@@ -63,7 +63,7 @@ export default async function AdminPage({ searchParams }: { searchParams: Promis
 
   const [pending, live] = await Promise.all([
     db.post.findMany({ where: { status: "pending" }, orderBy: { createdAt: "asc" }, take: 100 }),
-    db.post.findMany({ where: { status: "approved" }, orderBy: { createdAt: "desc" }, take: 50 }),
+    db.post.findMany({ where: { status: "approved", source: "community" }, orderBy: { createdAt: "desc" }, take: 50 }),
   ]);
 
   return (

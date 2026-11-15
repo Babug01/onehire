@@ -12,7 +12,7 @@ export function sessionValue(token: string): string {
   return createHmac("sha256", token).update("admin-session-v1").digest("hex");
 }
 
-function safeEqual(a: string, b: string): boolean {
+export function safeEqual(a: string, b: string): boolean {
   const ha = createHash("sha256").update(a).digest();
   const hb = createHash("sha256").update(b).digest();
   return timingSafeEqual(ha, hb);
