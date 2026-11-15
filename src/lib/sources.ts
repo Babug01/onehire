@@ -25,7 +25,7 @@ export type RawJob = {
 
 export type Source = { name: string; run: () => Promise<RawJob[]> };
 
-const UA = "TechReferralsEU-jobs/1.0 (+https://techreferrals-eu.vercel.app/about)";
+const UA = "OneHire-jobs/1.0 (+https://onehire.vercel.app/about)";
 
 async function getJson<T = any>(url: string): Promise<T> {
   const res = await fetch(url, { signal: AbortSignal.timeout(45_000), headers: { accept: "application/json", "user-agent": UA } });

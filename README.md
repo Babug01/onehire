@@ -1,4 +1,4 @@
-# TechReferrals EU
+# OneHire
 
 One search for tech jobs in Europe. Every day the site collects open tech roles from company career sites and job boards, merges the same job posted on several sites into one entry, and shows the full description, the apply link, every site it is posted on, and who to ask for a referral.
 

@@ -3,7 +3,7 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "TechReferrals EU: every tech job in Europe, one search", template: "%s | TechReferrals EU" },
+  title: { default: "OneHire: every tech job in Europe, one search", template: "%s | OneHire" },
   description:
     "Search tech jobs in Europe from company career sites and job boards in one place. Each job shown once, with every site it is posted on, the apply link and who to ask for a referral.",
 };
@@ -16,10 +16,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <div className="container header-row">
             <Link href="/" className="brand">
               <span className="brand-mark" aria-hidden="true">
-                TR
+                1H
               </span>
               <span>
-                TechReferrals <span className="eu">EU</span>
+                One<span className="brand-accent">Hire</span>
               </span>
             </Link>
             <nav className="main-nav">
