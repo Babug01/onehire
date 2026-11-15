@@ -1,38 +1,48 @@
 import type { Metadata } from "next";
-import { MAX_AGE_DAYS } from "@/lib/posts";
+import { COMPANIES } from "@/lib/companies";
 
-export const metadata: Metadata = { title: "About" };
+export const metadata: Metadata = { title: "How it works" };
 
 export default function AboutPage() {
   const contact = process.env.CONTACT_EMAIL;
   return (
-    <section className="prose hero">
-      <h1>About</h1>
+    <section className="prose">
+      <h1>How it works</h1>
       <p>
-        Many tech jobs in Europe are filled through referrals. People who work at a company often post on LinkedIn
-        or X that their team is hiring and that they are happy to refer. Those posts are easy to miss. This site
-        lists them in one place, filtered by role, city, country, seniority and work mode.
+        Tech jobs in Europe are spread over hundreds of career sites and job boards. This site searches them for you:
+        every day it collects the open tech roles in Europe, merges the same job posted in several places into one
+        entry, and shows where else it is listed.
       </p>
+      <h2>Where the jobs come from</h2>
+      <ul>
+        <li>
+          <strong>Company career sites</strong> of {COMPANIES.length} companies hiring in Europe, such as Adyen, bunq,
+          Coolblue, Mollie, TomTom, Spotify and Wise. We read the public job feeds their career sites publish.
+        </li>
+        <li>
+          <strong>Job boards</strong> with open APIs: Arbeitnow, Jobicy and Remotive. These also carry jobs from smaller
+          companies and agencies.
+        </li>
+      </ul>
+      <h2>Why not LinkedIn, X or Indeed?</h2>
       <p>
-        Next to referral posts, we import open tech roles in Europe every day from the public job boards of companies
-        such as Adyen, Mollie, Elastic and Spotify (Greenhouse, Lever and Ashby) and from Arbeitnow. For those jobs,
-        find someone at the company on LinkedIn and ask for a referral before you apply.
+        Their terms forbid copying listings, and they offer no API to read jobs. LinkedIn also keeps applicant numbers to
+        itself, so no site outside LinkedIn can show them. Instead, every job here links to LinkedIn to find someone at
+        the company who can refer you.
       </p>
-      <h2>How it works</h2>
-      <ol>
-        <li>Browse or filter referral posts and company jobs.</li>
-        <li>Open the original post, or the job on the company careers page.</li>
-        <li>Message the post author, or someone at the company, with a short intro and your CV.</li>
-      </ol>
-      <p>
-        We never take applications or act as a recruiter. Referral posts are shared by the community, reviewed before
-        they appear, and hidden after {MAX_AGE_DAYS} days. Company jobs disappear when they close.
-      </p>
+      <h2>On each job</h2>
+      <ul>
+        <li>The full description and the apply link on the original site.</li>
+        <li>Every site the job is posted on, and when it was first posted.</li>
+        <li>The hiring contact or email address, when the ad itself names one.</li>
+        <li>A LinkedIn search for people at the company, to ask for a referral.</li>
+      </ul>
+      <p>Jobs disappear a few days after they are taken down from the original sites. We never take applications.</p>
       <h2>Privacy</h2>
       <p>
-        We store only what is needed to list a post: the link to the public post, the role details and the name of the
-        author as shown on that post. We use no tracking cookies. Authors who want a post removed can ask{" "}
-        {contact ? <a href={`mailto:${contact}`}>{contact}</a> : "the site owner"} and we remove it.
+        We use no tracking cookies and store no visitor data. Contact names and email addresses are shown only when the
+        employer published them in the job ad. To have something removed, contact{" "}
+        {contact ? <a href={`mailto:${contact}`}>{contact}</a> : "the site owner"}.
       </p>
     </section>
   );

@@ -8,6 +8,7 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+// Legacy table from the referral-post version; kept so schema sync never drops data.
 model Post {
   id          String   @id @default(cuid())
   title       String
@@ -28,4 +29,47 @@ model Post {
 
   @@index([status, createdAt])
   @@index([source, lastSeenAt])
+}
+
+// One row per unique job; the same job found on several sites is merged via dedupeKey.
+model Job {
+  id              String    @id @default(cuid())
+  dedupeKey       String    @unique
+  title           String
+  company         String
+  companyDomain   String    @default("")
+  companyIndustry String    @default("")
+  city            String
+  country         String
+  category        String
+  seniority       String
+  workMode        String
+  employmentType  String    @default("")
+  salary          String    @default("")
+  description     String    @default("")
+  contactName     String    @default("")
+  contactEmail    String    @default("")
+  applyUrl        String
+  postedAt        DateTime
+  firstSeenAt     DateTime  @default(now())
+  lastSeenAt      DateTime  @default(now())
+  listings        Listing[]
+
+  @@index([lastSeenAt, postedAt])
+  @@index([country])
+  @@index([category])
+  @@index([company])
+}
+
+// Where a job was found (company careers page, job board, ...).
+model Listing {
+  id         String   @id @default(cuid())
+  jobId      String
+  job        Job      @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  sourceName String
+  sourceKind String
+  url        String   @unique
+  lastSeenAt DateTime @default(now())
+
+  @@index([jobId])
 }

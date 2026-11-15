@@ -3,9 +3,9 @@ import Link from "next/link";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: { default: "Tech Referrals EU", template: "%s | Tech Referrals EU" },
+  title: { default: "TechReferrals EU: every tech job in Europe, one search", template: "%s | TechReferrals EU" },
   description:
-    "Tech job referral posts from LinkedIn and X for the Netherlands and Europe, in one place. Find a post, message the author.",
+    "Search tech jobs in Europe from company career sites and job boards in one place. Each job shown once, with every site it is posted on, the apply link and who to ask for a referral.",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -23,18 +23,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               </span>
             </Link>
             <nav className="main-nav">
-              <Link href="/">Browse</Link>
-              <Link href="/about">About</Link>
-              <Link href="/submit" className="nav-cta">
-                Share a referral post
-              </Link>
+              <Link href="/">Search jobs</Link>
+              <Link href="/about">How it works</Link>
             </nav>
           </div>
         </header>
         <main className="container">{children}</main>
         <footer className="site-footer container">
-          We link to public posts and company careers pages and never take applications. Company jobs are imported
-          daily from public job boards (Greenhouse, Lever, Ashby) and Arbeitnow.
+          Jobs are collected daily from public company career sites (Greenhouse, Lever, Ashby, Recruitee, SmartRecruiters,
+          Workable) and the Arbeitnow, Jobicy and Remotive job boards. We never take applications: apply on the
+          original site.
         </footer>
       </body>
     </html>

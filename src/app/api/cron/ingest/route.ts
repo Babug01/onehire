@@ -1,6 +1,6 @@
-import { safeEqual } from "@/lib/admin";
 import { getDb } from "@/lib/db";
 import { ingestJobs } from "@/lib/ingest";
+import { safeEqual } from "@/lib/secure";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 300;

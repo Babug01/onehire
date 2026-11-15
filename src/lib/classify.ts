@@ -151,11 +151,18 @@ const SENIORITY_RULES: [RegExp, string][] = [
   [/\b(medior|mid[- ]?level|intermediate)\b/, "Medior"],
 ];
 
-export function seniorityFor(title: string): string {
-  const t = title.toLowerCase();
-  for (const [re, s] of SENIORITY_RULES) if (re.test(t)) return s;
+export function seniorityFor(title: string, level = ""): string {
+  for (const text of [title, level]) {
+    const t = text.toLowerCase();
+    for (const [re, s] of SENIORITY_RULES) if (re.test(t)) return s;
+  }
   return "Not specified";
 }
+
+export const EUROPE_CODES = new Set([
+  "NL", "BE", "DE", "FR", "IE", "GB", "ES", "PT", "IT", "PL", "AT", "CH", "SE", "DK", "NO", "FI",
+  "CZ", "RO", "GR", "HU", "EE", "LT", "LU", "EU",
+]);
 
 export function workModeFor(...hints: (string | boolean | null | undefined)[]): string {
   const text = hints.filter((h) => typeof h === "string").join(" ").toLowerCase();
