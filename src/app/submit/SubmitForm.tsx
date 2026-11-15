@@ -1,14 +1,26 @@
 "use client";
 
-import { useActionState } from "react";
+import { startTransition, useActionState, useEffect, useRef } from "react";
 import { CATEGORIES, CITIES, COUNTRIES, SENIORITY, WORK_MODES } from "@/lib/options";
 import { submitPost, type SubmitState } from "./actions";
 
 export default function SubmitForm() {
   const [state, action, pending] = useActionState<SubmitState, FormData>(submitPost, null);
+  const formRef = useRef<HTMLFormElement>(null);
+
+  useEffect(() => {
+    if (state?.ok) formRef.current?.reset();
+  }, [state]);
+
+  // Submitting via onSubmit avoids React's automatic reset, so input survives a validation error.
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const data = new FormData(e.currentTarget);
+    startTransition(() => action(data));
+  };
 
   return (
-    <form className="form" action={action}>
+    <form className="form" ref={formRef} onSubmit={onSubmit}>
       <label>
         Link to the post
         <span className="hint">Public LinkedIn or X post where someone offers a referral.</span>
