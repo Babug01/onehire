@@ -1,0 +1,65 @@
+export const COUNTRIES: Record<string, string> = {
+  NL: "Netherlands",
+  BE: "Belgium",
+  DE: "Germany",
+  FR: "France",
+  IE: "Ireland",
+  GB: "United Kingdom",
+  ES: "Spain",
+  PT: "Portugal",
+  IT: "Italy",
+  PL: "Poland",
+  AT: "Austria",
+  CH: "Switzerland",
+  SE: "Sweden",
+  DK: "Denmark",
+  NO: "Norway",
+  FI: "Finland",
+  EU: "EU-wide / Remote",
+};
+
+export const CATEGORIES = [
+  "Frontend",
+  "Backend",
+  "Full-stack",
+  "Mobile",
+  "DevOps / Cloud",
+  "Data / ML",
+  "Security",
+  "QA / Test",
+  "Product",
+  "Design",
+  "Engineering management",
+  "Other",
+];
+
+export const SENIORITY = ["Intern / Graduate", "Junior", "Medior", "Senior", "Staff / Principal", "Lead / Manager"];
+
+export const WORK_MODES = ["On-site", "Hybrid", "Remote"];
+
+export const CITIES = [
+  "Amsterdam",
+  "Rotterdam",
+  "Utrecht",
+  "The Hague",
+  "Eindhoven",
+  "Delft",
+  "Groningen",
+  "Brussels",
+  "Antwerp",
+  "Berlin",
+  "Munich",
+  "Hamburg",
+  "Paris",
+  "Dublin",
+  "London",
+  "Barcelona",
+  "Madrid",
+  "Lisbon",
+  "Warsaw",
+  "Vienna",
+  "Zurich",
+  "Stockholm",
+  "Copenhagen",
+  "Helsinki",
+];
