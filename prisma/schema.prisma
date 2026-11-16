@@ -77,3 +77,11 @@ model Listing {
 
   @@index([jobId])
 }
+
+// Website found for a job-board company (empty domain = looked up, nothing reliable found).
+model CompanyDomain {
+  key       String   @id
+  name      String
+  domain    String   @default("")
+  checkedAt DateTime @default(now())
+}

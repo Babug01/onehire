@@ -1,4 +1,5 @@
 import { COMPANIES } from "@/lib/companies";
+import { getDb } from "@/lib/db";
 
 const BY_DOMAIN = new Map(COMPANIES.map((c) => [c.domain, c.name]));
 const CACHE = "public, max-age=604800, s-maxage=604800, stale-while-revalidate=86400";
@@ -11,10 +12,12 @@ function letterSvg(name: string): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64"><rect width="64" height="64" rx="14" fill="#0b1f3a"/><text x="32" y="43" font-family="system-ui,Segoe UI,Arial,sans-serif" font-size="30" font-weight="700" fill="#ffffff" text-anchor="middle">${letter}</text></svg>`;
 }
 
-// Only domains from our own company list are fetched, so this cannot be used as an open proxy.
+// Only domains we know (followed companies, or websites found for job-board companies) are served.
 export async function GET(_req: Request, { params }: { params: Promise<{ domain: string }> }) {
   const domain = (await params).domain.toLowerCase();
-  const name = BY_DOMAIN.get(domain);
+  if (!/^[a-z0-9.-]{3,100}$/.test(domain)) return new Response("Not found", { status: 404 });
+  const name =
+    BY_DOMAIN.get(domain) ?? (await getDb()?.companyDomain.findFirst({ where: { domain }, select: { name: true } }))?.name;
   if (!name) return new Response("Not found", { status: 404 });
   try {
     const res = await fetch(`https://www.google.com/s2/favicons?domain=${encodeURIComponent(domain)}&sz=128`, {

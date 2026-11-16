@@ -350,12 +350,22 @@ img.logo-img {
 }
 
 .company-list a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   padding: 4px 10px;
   border: 1px solid var(--border);
   border-radius: 999px;
   background: var(--card);
   text-decoration: none;
   font-size: 0.85rem;
+}
+
+.company-list a img.logo-img {
+  width: 20px;
+  height: 20px;
+  padding: 1px;
+  border-radius: 5px;
 }
 
 .company-list a span {

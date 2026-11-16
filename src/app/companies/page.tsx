@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { COMPANIES } from "@/lib/companies";
 import { listCompanies } from "@/lib/jobs";
 import { COUNTRIES } from "@/lib/options";
 import { ago, Logo } from "../ui";
@@ -20,8 +21,9 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Se
   const all = await listCompanies();
   const ql = q.toLowerCase();
   const companies = ql ? all.filter((c) => `${c.name} ${c.industry}`.toLowerCase().includes(ql)) : all;
-  const featured = companies.filter((c) => c.domain);
-  const others = companies.filter((c) => !c.domain);
+  const followed = new Set(COMPANIES.map((c) => c.name));
+  const featured = companies.filter((c) => followed.has(c.name));
+  const others = companies.filter((c) => !followed.has(c.name));
   const totalJobs = all.reduce((n, c) => n + c.jobs, 0);
 
   return (
@@ -76,6 +78,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Se
           <div className="company-list">
             {others.map((c) => (
               <Link key={c.slug} href={`/company/${c.slug}`}>
+                {c.domain && <Logo name={c.name} domain={c.domain} size={20} />}
                 {c.name} <span>{c.jobs}</span>
               </Link>
             ))}

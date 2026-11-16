@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { categoryFor, EUROPE_CODES, placeFor, seniorityFor, workModeFor } from "./classify";
 import { COMPANIES } from "./companies";
+import { domainFromText, resolveDomains } from "./domains";
 import { SOURCES, type RawJob } from "./sources";
 import { companyKey, contactEmailIn, hiringContactIn, tagsFor, titleKey } from "./text";
 
@@ -125,6 +126,17 @@ const hashOf = (job: Merged["job"]) => createHash("sha1").update(JSON.stringify(
 export async function ingestJobs(db: PrismaClient) {
   const started = Date.now();
   const { jobs, fetched, failed } = await collectJobs();
+
+  const boardCompanies = new Map<string, { name: string; hint: string }>();
+  for (const j of jobs) {
+    if (j.job.companyDomain) continue;
+    const k = companyKey(j.job.company);
+    const hint = domainFromText(j.job.company, j.job.description);
+    if (!boardCompanies.has(k) || (hint && !boardCompanies.get(k)!.hint)) boardCompanies.set(k, { name: j.job.company, hint });
+  }
+  const domains = await resolveDomains(db, boardCompanies);
+  for (const j of jobs) if (!j.job.companyDomain) j.job.companyDomain = domains.get(companyKey(j.job.company)) ?? "";
+
   const now = new Date();
   let created = 0;
   let updated = 0;
