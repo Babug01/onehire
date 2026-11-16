@@ -1,14 +1,16 @@
 import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { categoryFor, EUROPE_CODES, placeFor, seniorityFor, workModeFor } from "./classify";
-import { COMPANIES } from "./companies";
+import { COMPANIES, type Ats } from "./companies";
 import { domainFromText, resolveDomains } from "./domains";
-import { SOURCES, type RawJob } from "./sources";
+import { BOARD_SOURCES, careerSiteSource, pMap, SOURCES, type RawJob, type Source } from "./sources";
 import { companyKey, contactEmailIn, hiringContactIn, tagsFor, titleKey } from "./text";
 
 // Job aggregators re-post other companies' jobs; there is nobody there to refer you.
 const AGGREGATORS = /\b(jobgether|jobleads|jooble|talent\.com)\b/i;
-const MAX_DESCRIPTION = 15_000;
+// Kept short so tens of thousands of jobs fit the free database; the full ad is one click away.
+const MAX_DESCRIPTION = 3_000;
+const DELETE_AFTER_DAYS = 30;
 
 type Merged = {
   key: string;
@@ -46,7 +48,8 @@ function normalize(r: RawJob) {
   const place = placeFor(r.locations.filter(Boolean), { countryCode: r.countryCode, bareRemoteIsEurope: r.bareRemoteIsEurope });
   if (!place || !EUROPE_CODES.has(place.country)) return null;
   const known = knownCompany.get(companyKey(r.company));
-  const text = r.text.slice(0, MAX_DESCRIPTION);
+  const full = r.text.trim();
+  const text = full.length > MAX_DESCRIPTION ? `${full.slice(0, MAX_DESCRIPTION).replace(/\s+\S*$/, "")} …` : full;
   return {
     key: [companyKey(r.company), titleKey(r.title), place.country, place.city.toLowerCase()].join("|"),
     raw: r,
@@ -63,60 +66,74 @@ function normalize(r: RawJob) {
       employmentType: (r.employmentType ?? "").slice(0, 60),
       salary: (r.salary ?? "").slice(0, 120),
       description: text,
-      contactName: hiringContactIn(text),
-      contactEmail: (r.email || contactEmailIn(text)).slice(0, 200),
-      ...tagsFor(text),
+      contactName: hiringContactIn(full),
+      contactEmail: (r.email || contactEmailIn(full)).slice(0, 200),
+      ...tagsFor(full),
       applyUrl: (r.applyUrl && r.applyUrl.startsWith("https://") ? r.applyUrl : r.url).slice(0, 1000),
       postedAt: r.published > new Date() ? new Date() : r.published,
     },
   };
 }
 
-/** Fetches every source and merges the same job found on several sites into one entry. */
-export async function collectJobs() {
-  const settled = await Promise.allSettled(SOURCES.map((s) => s.run()));
+function addRaw(merged: Map<string, Merged>, r: RawJob) {
+  const n = normalize(r);
+  if (!n) return;
+  const listing = { sourceName: r.sourceName, sourceKind: r.sourceKind, url: r.url.slice(0, 1000) };
+  const existing = merged.get(n.key);
+  if (!existing) {
+    merged.set(n.key, { key: n.key, job: n.job, listings: [listing] });
+    return;
+  }
+  if (!existing.listings.some((l) => l.url === listing.url)) existing.listings.push(listing);
+  // Prefer the company's own ad: its apply link and description are the original.
+  const existingIsCompany = existing.listings[0].sourceKind === "company";
+  if (r.sourceKind === "company" && !existingIsCompany) {
+    const idx = existing.listings.findIndex((l) => l.url === listing.url);
+    existing.listings.unshift(...existing.listings.splice(idx, 1));
+    const old = existing.job;
+    existing.job = {
+      ...n.job,
+      contactName: n.job.contactName || old.contactName,
+      contactEmail: n.job.contactEmail || old.contactEmail,
+      salary: n.job.salary || old.salary,
+      postedAt: n.job.postedAt < old.postedAt ? n.job.postedAt : old.postedAt,
+    };
+  } else {
+    existing.job.contactName ||= n.job.contactName;
+    existing.job.contactEmail ||= n.job.contactEmail;
+    existing.job.salary ||= n.job.salary;
+    if (n.job.postedAt < existing.job.postedAt) existing.job.postedAt = n.job.postedAt;
+  }
+}
+
+/** Fetches the sources (a few at a time) and merges the same job found on several sites into one entry. */
+export async function collectJobs(sources: Source[] = SOURCES, concurrency = 12) {
   const failed: string[] = [];
   let fetched = 0;
   const merged = new Map<string, Merged>();
-
-  settled.forEach((s, i) => {
-    if (s.status === "rejected") {
-      failed.push(SOURCES[i].name);
-      return;
-    }
-    fetched += s.value.length;
-    for (const r of s.value) {
-      const n = normalize(r);
-      if (!n) continue;
-      const listing = { sourceName: r.sourceName, sourceKind: r.sourceKind, url: r.url.slice(0, 1000) };
-      const existing = merged.get(n.key);
-      if (!existing) {
-        merged.set(n.key, { key: n.key, job: n.job, listings: [listing] });
-        continue;
-      }
-      if (!existing.listings.some((l) => l.url === listing.url)) existing.listings.push(listing);
-      // Prefer the company's own ad: its apply link and description are the original.
-      const existingIsCompany = existing.listings[0].sourceKind === "company";
-      if (r.sourceKind === "company" && !existingIsCompany) {
-        const idx = existing.listings.findIndex((l) => l.url === listing.url);
-        existing.listings.unshift(...existing.listings.splice(idx, 1));
-        const old = existing.job;
-        existing.job = {
-          ...n.job,
-          contactName: n.job.contactName || old.contactName,
-          contactEmail: n.job.contactEmail || old.contactEmail,
-          salary: n.job.salary || old.salary,
-          postedAt: n.job.postedAt < old.postedAt ? n.job.postedAt : old.postedAt,
-        };
-      } else {
-        existing.job.contactName ||= n.job.contactName;
-        existing.job.contactEmail ||= n.job.contactEmail;
-        existing.job.salary ||= n.job.salary;
-        if (n.job.postedAt < existing.job.postedAt) existing.job.postedAt = n.job.postedAt;
-      }
+  await pMap(sources, concurrency, async (s) => {
+    try {
+      const raws = await s.run();
+      fetched += raws.length;
+      for (const r of raws) addRaw(merged, r);
+    } catch {
+      failed.push(s.name);
     }
   });
   return { jobs: [...merged.values()], fetched, failed };
+}
+
+/** Curated companies, discovered career sites from the database, and the job boards. */
+export async function loadSources(db: PrismaClient): Promise<Source[]> {
+  const curated = new Set(COMPANIES.map((c) => `${c.ats}:${c.token.toLowerCase()}`));
+  const discovered = await db.careerSite.findMany({ where: { active: true, curated: false } });
+  return [
+    ...COMPANIES.map(careerSiteSource),
+    ...discovered
+      .filter((s) => !curated.has(`${s.ats}:${s.token.toLowerCase()}`))
+      .map((s) => careerSiteSource({ ats: s.ats as Ats, token: s.token, name: s.name || s.token, domain: s.domain, industry: s.industry })),
+    ...BOARD_SOURCES,
+  ];
 }
 
 const chunks = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
@@ -125,7 +142,8 @@ const hashOf = (job: Merged["job"]) => createHash("sha1").update(JSON.stringify(
 
 export async function ingestJobs(db: PrismaClient) {
   const started = Date.now();
-  const { jobs, fetched, failed } = await collectJobs();
+  const sources = await loadSources(db);
+  const { jobs, fetched, failed } = await collectJobs(sources);
 
   const boardCompanies = new Map<string, { name: string; hint: string }>();
   for (const j of jobs) {
@@ -190,15 +208,22 @@ export async function ingestJobs(db: PrismaClient) {
     await db.listing.updateMany({ where: { url: { in: part.map((l) => l.url) } }, data: { lastSeenAt: now } });
   }
 
+  const cutoff = new Date(Date.now() - DELETE_AFTER_DAYS * 86_400_000);
+  const deleted = (await db.job.deleteMany({ where: { lastSeenAt: { lt: cutoff } } })).count;
+  await db.listing.deleteMany({ where: { lastSeenAt: { lt: cutoff } } });
+
   return {
+    sources: sources.length,
     fetched,
     unique: jobs.length,
     created,
     updated,
     refreshed: refreshed - created,
+    deleted,
     listings: listings.length,
     multiSource: jobs.filter((j) => j.listings.length > 1).length,
-    failed,
+    failedCount: failed.length,
+    failed: failed.slice(0, 50),
     seconds: Math.round((Date.now() - started) / 1000),
   };
 }

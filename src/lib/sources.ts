@@ -1,5 +1,5 @@
 import { categoryFor, EUROPE_CODES, placeFor } from "./classify";
-import { COMPANIES, type Company } from "./companies";
+import { COMPANIES, type Ats, type Company } from "./companies";
 import { htmlToText, decodeEntities } from "./text";
 
 export type RawJob = {
@@ -27,13 +27,13 @@ export type Source = { name: string; run: () => Promise<RawJob[]> };
 
 const UA = "OneHire-jobs/1.0 (+https://onehire.vercel.app/about)";
 
-async function getJson<T = any>(url: string): Promise<T> {
+export async function getJson<T = any>(url: string): Promise<T> {
   const res = await fetch(url, { signal: AbortSignal.timeout(45_000), headers: { accept: "application/json", "user-agent": UA } });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return res.json() as Promise<T>;
 }
 
-async function getText(url: string): Promise<string> {
+export async function getText(url: string): Promise<string> {
   const res = await fetch(url, { signal: AbortSignal.timeout(45_000), headers: { "user-agent": UA } });
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return res.text();
@@ -41,12 +41,12 @@ async function getText(url: string): Promise<string> {
 
 // Minimal XML helpers for the flat RSS/XML job feeds (no nested same-name tags).
 const unwrap = (s: string) => s.replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/, "$1").trim();
-const xmlAll = (xml: string, name: string) =>
+export const xmlAll = (xml: string, name: string) =>
   [...xml.matchAll(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, "g"))].map((m) => unwrap(m[1]));
 const xmlOne = (xml: string, name: string) => xmlAll(xml, name)[0] ?? "";
-const xmlText = (xml: string, name: string) => decodeEntities(xmlOne(xml, name));
+export const xmlText = (xml: string, name: string) => decodeEntities(xmlOne(xml, name));
 
-async function pMap<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
+export async function pMap<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
   let i = 0;
   await Promise.all(
@@ -81,7 +81,7 @@ const careers = (c: Company) => ({
 });
 
 /** Cheap pre-check so we only fetch full ads for European tech roles. */
-const looksRelevant = (title: string, locations: string[], countryCode?: string) => {
+export const looksRelevant = (title: string, locations: string[], countryCode?: string) => {
   if (!categoryFor(title)) return false;
   const place = placeFor(locations, { countryCode });
   return !!place && EUROPE_CODES.has(place.country);
@@ -396,4 +396,10 @@ function remoteRegions(v: unknown): string[] {
 
 const BY_ATS = { greenhouse, lever, levereu: lever, ashby, recruitee, smartrecruiters, workable, teamtailor, personio };
 
-export const SOURCES: Source[] = [...COMPANIES.map((c) => BY_ATS[c.ats](c)), arbeitnow, jobicy, remotive];
+export const ATS_LIST = Object.keys(BY_ATS) as Ats[];
+
+export const careerSiteSource = (c: Company): Source => BY_ATS[c.ats](c);
+
+export const BOARD_SOURCES: Source[] = [arbeitnow, jobicy, remotive];
+
+export const SOURCES: Source[] = [...COMPANIES.map(careerSiteSource), ...BOARD_SOURCES];

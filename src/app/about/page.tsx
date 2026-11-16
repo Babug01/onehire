@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
 import { COMPANIES } from "@/lib/companies";
+import { getDb } from "@/lib/db";
 
 export const metadata: Metadata = { title: "How it works" };
+export const dynamic = "force-dynamic";
 
-export default function AboutPage() {
+export default async function AboutPage() {
   const contact = process.env.CONTACT_EMAIL;
+  const sites = Math.max(COMPANIES.length, (await getDb()?.careerSite.count({ where: { active: true } })) ?? 0);
   return (
     <section className="prose">
       <h1>How it works</h1>
@@ -16,8 +19,9 @@ export default function AboutPage() {
       <h2>Where the jobs come from</h2>
       <ul>
         <li>
-          <strong>Company career sites</strong> of {COMPANIES.length} companies hiring in Europe, such as Adyen, bunq,
-          Coolblue, Mollie, TomTom, Spotify and Wise. We read the public job feeds their career sites publish.
+          <strong>Company career sites</strong> of {sites.toLocaleString("en")} companies hiring in Europe, such as Adyen,
+          bunq, Coolblue, Mollie, TomTom, Spotify and Wise. We read the public job feeds their career sites publish, and
+          every week we look for more companies in the public Common Crawl web archive.
         </li>
         <li>
           <strong>Job boards</strong> with open APIs: Arbeitnow, Jobicy and Remotive. These also carry jobs from smaller

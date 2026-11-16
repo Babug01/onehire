@@ -212,7 +212,16 @@ export function JobDetail({ job, fullPageHref }: { job: JobDetailData; fullPageH
       <section className="detail-section">
         <h2>Job description</h2>
         {job.description ? (
-          <div className="description">{job.description}</div>
+          <>
+            <div className="description">{job.description}</div>
+            {job.description.endsWith("…") && primary && (
+              <p className="detail-foot">
+                <a href={primary.url} target="_blank" rel="noopener noreferrer nofollow">
+                  Read the full ad on {primary.sourceName} ↗
+                </a>
+              </p>
+            )}
+          </>
         ) : (
           <p className="muted">The full description is on the job site. Use the apply link above.</p>
         )}

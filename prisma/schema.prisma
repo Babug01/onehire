@@ -85,3 +85,20 @@ model CompanyDomain {
   domain    String   @default("")
   checkedAt DateTime @default(now())
 }
+
+// A company career board we import from: curated in src/lib/companies.ts or found by scripts/discover.ts.
+model CareerSite {
+  id         String   @id @default(cuid())
+  ats        String
+  token      String
+  name       String   @default("")
+  domain     String   @default("")
+  industry   String   @default("")
+  curated    Boolean  @default(false)
+  active     Boolean  @default(true)
+  europeJobs Int      @default(0)
+  checkedAt  DateTime @default(now())
+
+  @@unique([ats, token])
+  @@index([active])
+}

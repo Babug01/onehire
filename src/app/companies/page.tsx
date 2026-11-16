@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { COMPANIES } from "@/lib/companies";
 import { listCompanies } from "@/lib/jobs";
 import { COUNTRIES } from "@/lib/options";
 import { ago, Logo } from "../ui";
@@ -14,6 +13,8 @@ export const metadata: Metadata = {
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
+const FEATURED = 120;
+
 export default async function CompaniesPage({ searchParams }: { searchParams: SearchParams }) {
   const sp = await searchParams;
   const raw = sp.q;
@@ -21,9 +22,8 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Se
   const all = await listCompanies();
   const ql = q.toLowerCase();
   const companies = ql ? all.filter((c) => `${c.name} ${c.industry}`.toLowerCase().includes(ql)) : all;
-  const followed = new Set(COMPANIES.map((c) => c.name));
-  const featured = companies.filter((c) => followed.has(c.name));
-  const others = companies.filter((c) => !followed.has(c.name));
+  const featured = companies.slice(0, FEATURED);
+  const others = companies.slice(FEATURED);
   const totalJobs = all.reduce((n, c) => n + c.jobs, 0);
 
   return (
@@ -52,7 +52,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Se
 
       {featured.length > 0 && (
         <section className="company-section">
-          <h2>Career sites we follow ({featured.length})</h2>
+          <h2>{q ? `Matching companies` : `Most open jobs`}</h2>
           <div className="company-grid">
             {featured.map((c) => (
               <Link key={c.slug} href={`/company/${c.slug}`} className="company-card">
@@ -74,7 +74,7 @@ export default async function CompaniesPage({ searchParams }: { searchParams: Se
 
       {others.length > 0 && (
         <section className="company-section">
-          <h2>More companies from job boards ({others.length})</h2>
+          <h2>All other companies ({others.length.toLocaleString("en")})</h2>
           <div className="company-list">
             {others.map((c) => (
               <Link key={c.slug} href={`/company/${c.slug}`}>

@@ -2,7 +2,7 @@ import type { PrismaClient } from "@prisma/client";
 import { companyKey } from "./text";
 
 const LOOKUP_TTL_DAYS = 30;
-const MAX_LOOKUPS_PER_RUN = 150;
+const MAX_LOOKUPS_PER_RUN = Number(process.env.DOMAIN_LOOKUPS_PER_RUN) || 150;
 
 // Hosts that appear in job ads but never belong to the hiring company.
 const GENERIC_HOSTS =
