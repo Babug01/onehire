@@ -14,6 +14,10 @@ export type JobFilters = {
   workMode: string;
   company: string;
   posted: string;
+  visa: string;
+  relocation: string;
+  english: string;
+  sort: string;
   page: number;
 };
 
@@ -39,6 +43,9 @@ function jobWhere(f: JobFilters, skipCategory = false): Prisma.JobWhereInput {
   if (f.city) and.push({ city: { contains: f.city, mode: "insensitive" } });
   const days = Number(f.posted);
   if (days > 0) and.push({ postedAt: { gte: new Date(Date.now() - days * 86_400_000) } });
+  if (f.visa) and.push({ visa: true });
+  if (f.relocation) and.push({ relocation: true });
+  if (f.english) and.push({ languages: "" });
   for (const w of searchWords(f.q)) {
     and.push({ OR: SEARCH_FIELDS.map((field) => ({ [field]: { contains: w, mode: "insensitive" } })) });
   }
@@ -63,6 +70,9 @@ const cardSelect = {
   workMode: true,
   salary: true,
   contactName: true,
+  visa: true,
+  relocation: true,
+  languages: true,
   postedAt: true,
   listings: listingSelect,
 } satisfies Prisma.JobSelect;
@@ -70,18 +80,60 @@ const cardSelect = {
 export type JobCardData = Prisma.JobGetPayload<{ select: typeof cardSelect }>;
 export type JobDetailData = Prisma.JobGetPayload<{ include: { listings: typeof listingSelect } }> & { companyJobs: number };
 
+const MAX_RANKED = 3000;
+
+type RankFields = { id: string; title: string; company: string; category: string; city: string; companyIndustry: string; postedAt: Date };
+
+/** Title hits count most, then company/role/city; a small bonus keeps newer jobs higher among equals. */
+function score(j: RankFields, words: string[], phrase: string): number {
+  const title = j.title.toLowerCase();
+  let s = phrase.includes(" ") && title.includes(phrase) ? 15 : 0;
+  for (const w of words) {
+    if (new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`).test(title)) s += 10;
+    else if (title.includes(w)) s += 6;
+    if (j.company.toLowerCase().includes(w)) s += 6;
+    if (j.category.toLowerCase().includes(w)) s += 4;
+    if (j.city.toLowerCase().includes(w) || j.companyIndustry.toLowerCase().includes(w)) s += 3;
+  }
+  const ageDays = (Date.now() - j.postedAt.getTime()) / 86_400_000;
+  return s + Math.max(0, 3 - ageDays / 10);
+}
+
 export async function searchJobs(f: JobFilters) {
   const db = getDb();
   if (!db) return null;
   const where = jobWhere(f);
-  const [jobs, total, byCategory, sources] = await Promise.all([
-    db.job.findMany({
+  const words = searchWords(f.q);
+  const byRelevance = words.length > 0 && f.sort !== "newest";
+
+  const pageJobs = async () => {
+    if (!byRelevance) {
+      return db.job.findMany({
+        where,
+        orderBy: [{ postedAt: "desc" }, { id: "asc" }],
+        skip: (f.page - 1) * PAGE_SIZE,
+        take: PAGE_SIZE,
+        select: cardSelect,
+      });
+    }
+    const candidates = await db.job.findMany({
       where,
-      orderBy: [{ postedAt: "desc" }, { id: "asc" }],
-      skip: (f.page - 1) * PAGE_SIZE,
-      take: PAGE_SIZE,
-      select: cardSelect,
-    }),
+      take: MAX_RANKED,
+      orderBy: { postedAt: "desc" },
+      select: { id: true, title: true, company: true, category: true, city: true, companyIndustry: true, postedAt: true },
+    });
+    const phrase = f.q.toLowerCase().trim();
+    const ids = candidates
+      .map((c) => ({ id: c.id, s: score(c, words, phrase) }))
+      .sort((a, b) => b.s - a.s)
+      .slice((f.page - 1) * PAGE_SIZE, f.page * PAGE_SIZE)
+      .map((c) => c.id);
+    const rows = await db.job.findMany({ where: { id: { in: ids } }, select: cardSelect });
+    return ids.map((id) => rows.find((r) => r.id === id)!).filter(Boolean);
+  };
+
+  const [jobs, total, byCategory, sources] = await Promise.all([
+    pageJobs(),
     db.job.count({ where }),
     db.job.groupBy({ by: ["category"], where: jobWhere(f, true), _count: { _all: true } }),
     db.listing.findMany({ where: { lastSeenAt: { gte: fresh() } }, distinct: ["sourceName"], select: { sourceName: true } }),
@@ -89,9 +141,17 @@ export async function searchJobs(f: JobFilters) {
   return {
     jobs,
     total,
+    byRelevance,
     sourceCount: sources.length,
     categoryCounts: Object.fromEntries(byCategory.map((c) => [c.category, c._count._all])) as Record<string, number>,
   };
+}
+
+/** Fresh job ids for the sitemap. */
+export async function sitemapJobs() {
+  const db = getDb();
+  if (!db) return [];
+  return db.job.findMany({ where: { lastSeenAt: { gte: fresh() } }, select: { id: true, lastSeenAt: true }, take: 45_000 });
 }
 
 export async function getJob(id: string): Promise<JobDetailData | null> {

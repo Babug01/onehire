@@ -1,6 +1,6 @@
 import { categoryFor, EUROPE_CODES, placeFor } from "./classify";
 import { COMPANIES, type Company } from "./companies";
-import { htmlToText } from "./text";
+import { htmlToText, decodeEntities } from "./text";
 
 export type RawJob = {
   title: string;
@@ -32,6 +32,19 @@ async function getJson<T = any>(url: string): Promise<T> {
   if (!res.ok) throw new Error(`${res.status} ${url}`);
   return res.json() as Promise<T>;
 }
+
+async function getText(url: string): Promise<string> {
+  const res = await fetch(url, { signal: AbortSignal.timeout(45_000), headers: { "user-agent": UA } });
+  if (!res.ok) throw new Error(`${res.status} ${url}`);
+  return res.text();
+}
+
+// Minimal XML helpers for the flat RSS/XML job feeds (no nested same-name tags).
+const unwrap = (s: string) => s.replace(/^\s*<!\[CDATA\[([\s\S]*?)\]\]>\s*$/, "$1").trim();
+const xmlAll = (xml: string, name: string) =>
+  [...xml.matchAll(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, "g"))].map((m) => unwrap(m[1]));
+const xmlOne = (xml: string, name: string) => xmlAll(xml, name)[0] ?? "";
+const xmlText = (xml: string, name: string) => decodeEntities(xmlOne(xml, name));
 
 async function pMap<T, R>(items: T[], limit: number, fn: (t: T) => Promise<R>): Promise<R[]> {
   const out: R[] = new Array(items.length);
@@ -244,6 +257,54 @@ function workable(c: Company): Source {
   };
 }
 
+function teamtailor(c: Company): Source {
+  return {
+    name: c.name,
+    run: async () => {
+      const xml = await getText(`https://${c.token}.teamtailor.com/jobs.rss`);
+      return xmlAll(xml, "item").map((item): RawJob => {
+        const places = xmlAll(item, "tt:location").map((l) => `${xmlText(l, "tt:city")}, ${xmlText(l, "tt:country")}`);
+        return {
+          ...careers(c),
+          title: xmlText(item, "title"),
+          url: xmlText(item, "link"),
+          locations: places,
+          modeHints: [xmlText(item, "remoteStatus").replace(/^none$/, ""), xmlText(item, "remoteStatus") === "fully"],
+          text: htmlToText(xmlOne(item, "description")),
+          published: date(xmlText(item, "pubDate")),
+        };
+      });
+    },
+  };
+}
+
+function personio(c: Company): Source {
+  return {
+    name: c.name,
+    run: async () => {
+      let host = `https://${c.token}.jobs.personio.de`;
+      let xml = await getText(`${host}/xml`).catch(() => "");
+      if (!xml.includes("<position>")) {
+        host = `https://${c.token}.jobs.personio.com`;
+        xml = await getText(`${host}/xml`);
+      }
+      return xmlAll(xml, "position").map((p): RawJob => ({
+        ...careers(c),
+        title: xmlText(p, "name"),
+        url: `${host}/job/${xmlText(p, "id")}`,
+        locations: [xmlText(p, "office"), ...xmlAll(p, "additionalOffice").map(decodeEntities)],
+        modeHints: [xmlText(p, "office")],
+        text: xmlAll(p, "jobDescription")
+          .map((d) => `${xmlText(d, "name")}\n${htmlToText(xmlOne(d, "value"))}`)
+          .join("\n\n"),
+        published: date(xmlText(p, "createdAt")),
+        employmentType: [xmlText(p, "employmentType"), xmlText(p, "schedule")].filter(Boolean).join(", "),
+        level: xmlText(p, "seniority"),
+      }));
+    },
+  };
+}
+
 const arbeitnow: Source = {
   name: "Arbeitnow",
   run: async () => {
@@ -333,6 +394,6 @@ function remoteRegions(v: unknown): string[] {
     .map((s) => `${s.trim().replace(/^(worldwide|anywhere|global)$/i, "Europe")} remote`);
 }
 
-const BY_ATS = { greenhouse, lever, levereu: lever, ashby, recruitee, smartrecruiters, workable };
+const BY_ATS = { greenhouse, lever, levereu: lever, ashby, recruitee, smartrecruiters, workable, teamtailor, personio };
 
 export const SOURCES: Source[] = [...COMPANIES.map((c) => BY_ATS[c.ats](c)), arbeitnow, jobicy, remotive];

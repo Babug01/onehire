@@ -23,6 +23,23 @@ const linkedInPeople = (keywords: string) =>
 
 const shown = (v: string) => v && v !== "Not specified";
 
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+
+function Tags({ job }: { job: { visa: boolean; relocation: boolean; languages: string } }) {
+  const langs = job.languages ? job.languages.split(",") : [];
+  return (
+    <div className="tags">
+      {job.visa && <span className="tag tag-good">Visa sponsorship</span>}
+      {job.relocation && <span className="tag tag-good">Relocation help</span>}
+      {langs.length > 0 ? (
+        <span className="tag tag-lang">{langs.map(cap).join(" / ")} required</span>
+      ) : (
+        <span className="tag">English OK</span>
+      )}
+    </div>
+  );
+}
+
 function Logo({ name }: { name: string }) {
   return (
     <div className="logo" aria-hidden="true">
@@ -49,6 +66,7 @@ export function JobCard({ job, href, selected }: { job: JobCardData; href: strin
           {job.salary && <span>{job.salary}</span>}
         </div>
         {job.contactName && <div className="job-card-contact">Contact in ad: {job.contactName}</div>}
+        <Tags job={job} />
         <div className="job-card-foot">
           <span className="posted">Posted {ago(job.postedAt)}</span>
           <span className="sites" title={sites.join(", ")}>
@@ -75,6 +93,7 @@ export function JobDetail({ job, fullPageHref }: { job: JobDetailData; fullPageH
           <div className="detail-company">
             {job.company} · {placeOf(job)}
           </div>
+          <Tags job={job} />
         </div>
       </header>
 

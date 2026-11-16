@@ -4,6 +4,7 @@ import { CATEGORIES, COUNTRIES, SENIORITY, WORK_MODES } from "@/lib/options";
 import { JobCard, JobDetail } from "./ui";
 
 export const dynamic = "force-dynamic";
+export const metadata = { alternates: { canonical: "/" } };
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>;
 
@@ -16,6 +17,9 @@ const LABELS: Partial<Record<keyof JobFilters, string>> = {
   workMode: "Work mode",
   company: "Company",
   posted: "Posted",
+  visa: "Visa sponsorship",
+  relocation: "Relocation help",
+  english: "No local language needed",
 };
 
 const POSTED: [string, string][] = [
@@ -34,6 +38,7 @@ function href(f: JobFilters, change: Partial<JobFilters> & { job?: string }, kee
 }
 
 function chipLabel(f: JobFilters, k: keyof JobFilters): string {
+  if (k === "visa" || k === "relocation" || k === "english") return "yes";
   if (k === "country") return COUNTRIES[f.country] ?? f.country;
   if (k === "posted") return POSTED.find(([v]) => v === f.posted)?.[1] ?? "";
   if (k === "q") return `"${f.q}"`;
@@ -55,6 +60,10 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     workMode: one("workMode"),
     company: one("company"),
     posted: one("posted"),
+    visa: one("visa") ? "1" : "",
+    relocation: one("relocation") ? "1" : "",
+    english: one("english") ? "1" : "",
+    sort: one("sort") === "newest" ? "newest" : "",
     page: Math.min(Math.max(parseInt(one("page"), 10) || 1, 1), 200),
   };
   const selectedId = one("job");
@@ -64,7 +73,7 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
     return <p className="empty">No database configured. Set DATABASE_URL to load jobs.</p>;
   }
 
-  const { jobs, total, sourceCount, categoryCounts } = result;
+  const { jobs, total, sourceCount, categoryCounts, byRelevance } = result;
   const selected = selectedId ? await getJob(selectedId) : jobs[0] ? await getJob(jobs[0].id) : null;
   const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
   const active = (Object.keys(LABELS) as (keyof JobFilters)[]).filter((k) => filters[k]);
@@ -123,6 +132,16 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
               ))}
             </select>
             {filters.company && <input type="hidden" name="company" value={filters.company} />}
+            {filters.sort && <input type="hidden" name="sort" value={filters.sort} />}
+            <label className="toggle">
+              <input type="checkbox" name="visa" value="1" defaultChecked={!!filters.visa} /> Visa sponsorship
+            </label>
+            <label className="toggle">
+              <input type="checkbox" name="relocation" value="1" defaultChecked={!!filters.relocation} /> Relocation help
+            </label>
+            <label className="toggle">
+              <input type="checkbox" name="english" value="1" defaultChecked={!!filters.english} /> No local language needed
+            </label>
           </div>
         </form>
         {topCategories.length > 0 && (
@@ -138,7 +157,20 @@ export default async function SearchPage({ searchParams }: { searchParams: Searc
 
       <div className="results-bar">
         <span>
-          <strong>{total.toLocaleString("en")}</strong> jobs · newest first
+          <strong>{total.toLocaleString("en")}</strong> jobs ·{" "}
+          {filters.q ? (
+            byRelevance ? (
+              <>
+                best match first (<Link href={href(filters, { sort: "newest" })}>show newest first</Link>)
+              </>
+            ) : (
+              <>
+                newest first (<Link href={href(filters, { sort: "" })}>show best match first</Link>)
+              </>
+            )
+          ) : (
+            "newest first"
+          )}
         </span>
         {active.map((k) => (
           <Link key={k} className="filter-chip" href={href(filters, { [k]: "" } as Partial<JobFilters>)} title={`Remove ${LABELS[k]} filter`}>

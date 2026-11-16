@@ -68,3 +68,40 @@ export const titleKey = (s: string) =>
     .replace(/\((?:[mfwdx]\s*\/\s*){1,3}[mfwdx]\)|\b[mfwd]\/[mfwd](?:\/[mfwdx])?\b/g, " ")
     .replace(/[^a-z0-9+#]+/g, " ")
     .trim();
+
+const VISA_YES =
+  /visa sponsorship|sponsor(?:ing|ship)? (?:your |a |the )?(?:work )?(?:visa|permit)|visa (?:support|assistance)|kennismigrant|highly[- ]skilled migrant|blue card|we (?:can |will )?sponsor/;
+const VISA_NO =
+  /(?:not|unable to|cannot|can't|don't|do not|no|without) (?:offer |provide |currently )?(?:any )?(?:visa )?sponsor|(?:visa|sponsorship)[^.\n]{0,60}(?:not (?:available|offered|provided|possible)|unable|cannot)/;
+const RELOCATION = /relocation (?:support|package|assistance|bonus|budget|allowance)|help(?:ing)? you (?:to )?relocate|relocation is (?:provided|offered|available)/;
+const RELOCATION_NO = /no relocation|relocation[^.\n]{0,60}(?:not (?:available|offered|provided|possible)|unable|cannot)/;
+const LANGUAGES = ["dutch", "german", "french", "spanish", "italian", "polish", "swedish", "danish", "norwegian", "finnish", "portuguese", "czech"];
+const AD_LANGUAGE: [string, RegExp][] = [
+  ["dutch", /\b(het|een|wij|jij|je|bij|voor|zijn|naar|onze|ervaring)\b/g],
+  ["german", /\b(und|die|der|wir|sie|mit|für|bei|ist|unsere|erfahrung)\b/g],
+  ["french", /\b(et|les|des|vous|nous|pour|avec|est|une|notre|expérience)\b/g],
+];
+const ENGLISH = /\b(the|and|you|we|with|for|are|our|your|experience)\b/g;
+
+/** Visa sponsorship, relocation help and required local languages, as stated in (or implied by) the ad. */
+export function tagsFor(text: string): { visa: boolean; relocation: boolean; languages: string } {
+  const t = text.toLowerCase();
+  const required = new Set<string>();
+  for (const l of LANGUAGES) {
+    const needs = new RegExp(
+      `(?:fluent|native|business[- ]level|professional|excellent|very good|strong|proficien\\w*|c1|c2)[^.\\n]{0,40}\\b${l}\\b|\\b${l}\\b[^.\\n]{0,30}(?:is )?(?:required|mandatory|a must|essential)`,
+    );
+    const optional = new RegExp(
+      `\\b${l}\\b[^.\\n]{0,40}(?:a plus|nice[- ]to[- ]have|an advantage|a bonus|preferred|beneficial|not (?:a )?(?:requirement|required|necessary|needed))`,
+    );
+    if (needs.test(t) && !optional.test(t)) required.add(l);
+  }
+  // An ad written in the local language effectively requires it.
+  const english = (t.match(ENGLISH) ?? []).length;
+  for (const [l, re] of AD_LANGUAGE) if ((t.match(re) ?? []).length > Math.max(15, english)) required.add(l);
+  return {
+    visa: VISA_YES.test(t) && !VISA_NO.test(t),
+    relocation: RELOCATION.test(t) && !RELOCATION_NO.test(t),
+    languages: [...required].join(","),
+  };
+}

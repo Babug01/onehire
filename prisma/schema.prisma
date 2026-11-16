@@ -49,6 +49,10 @@ model Job {
   description     String    @default("")
   contactName     String    @default("")
   contactEmail    String    @default("")
+  visa            Boolean   @default(false)
+  relocation      Boolean   @default(false)
+  languages       String    @default("")
+  contentHash     String    @default("")
   applyUrl        String
   postedAt        DateTime
   firstSeenAt     DateTime  @default(now())

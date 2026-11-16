@@ -1,8 +1,9 @@
+import { createHash } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 import { categoryFor, EUROPE_CODES, placeFor, seniorityFor, workModeFor } from "./classify";
 import { COMPANIES } from "./companies";
 import { SOURCES, type RawJob } from "./sources";
-import { companyKey, contactEmailIn, hiringContactIn, titleKey } from "./text";
+import { companyKey, contactEmailIn, hiringContactIn, tagsFor, titleKey } from "./text";
 
 // Job aggregators re-post other companies' jobs; there is nobody there to refer you.
 const AGGREGATORS = /\b(jobgether|jobleads|jooble|talent\.com)\b/i;
@@ -25,6 +26,9 @@ type Merged = {
     description: string;
     contactName: string;
     contactEmail: string;
+    visa: boolean;
+    relocation: boolean;
+    languages: string;
     applyUrl: string;
     postedAt: Date;
   };
@@ -60,6 +64,7 @@ function normalize(r: RawJob) {
       description: text,
       contactName: hiringContactIn(text),
       contactEmail: (r.email || contactEmailIn(text)).slice(0, 200),
+      ...tagsFor(text),
       applyUrl: (r.applyUrl && r.applyUrl.startsWith("https://") ? r.applyUrl : r.url).slice(0, 1000),
       postedAt: r.published > new Date() ? new Date() : r.published,
     },
@@ -115,27 +120,49 @@ export async function collectJobs() {
 
 const chunks = <T,>(a: T[], n: number) => Array.from({ length: Math.ceil(a.length / n) }, (_, i) => a.slice(i * n, i * n + n));
 
+const hashOf = (job: Merged["job"]) => createHash("sha1").update(JSON.stringify(job)).digest("hex");
+
 export async function ingestJobs(db: PrismaClient) {
   const started = Date.now();
   const { jobs, fetched, failed } = await collectJobs();
   const now = new Date();
   let created = 0;
+  let updated = 0;
   let refreshed = 0;
   const idByKey = new Map<string, string>();
+  const hashByKey = new Map<string, string>();
 
   for (const part of chunks(jobs, 500)) {
-    const found = await db.job.findMany({ where: { dedupeKey: { in: part.map((j) => j.key) } }, select: { id: true, dedupeKey: true } });
-    for (const f of found) idByKey.set(f.dedupeKey, f.id);
+    const found = await db.job.findMany({
+      where: { dedupeKey: { in: part.map((j) => j.key) } },
+      select: { id: true, dedupeKey: true, contentHash: true },
+    });
+    for (const f of found) {
+      idByKey.set(f.dedupeKey, f.id);
+      hashByKey.set(f.dedupeKey, f.contentHash);
+    }
   }
 
   for (const part of chunks(jobs.filter((j) => !idByKey.has(j.key)), 100)) {
     const rows = await db.job.createManyAndReturn({
-      data: part.map((j) => ({ ...j.job, dedupeKey: j.key, firstSeenAt: now, lastSeenAt: now })),
+      data: part.map((j) => ({ ...j.job, contentHash: hashOf(j.job), dedupeKey: j.key, firstSeenAt: now, lastSeenAt: now })),
       select: { id: true, dedupeKey: true },
       skipDuplicates: true,
     });
     created += rows.length;
     for (const r of rows) idByKey.set(r.dedupeKey, r.id);
+  }
+
+  // Ads get edited, and classification rules improve: rewrite jobs whose content changed.
+  const changed = jobs.filter((j) => hashByKey.has(j.key) && hashByKey.get(j.key) !== hashOf(j.job));
+  for (const part of chunks(changed, 50)) {
+    await db.$transaction(
+      part.map((j) => {
+        const { postedAt, ...rest } = j.job;
+        return db.job.update({ where: { id: idByKey.get(j.key)! }, data: { ...rest, contentHash: hashOf(j.job) } });
+      }),
+    );
+    updated += part.length;
   }
 
   const seen = jobs.filter((j) => idByKey.has(j.key));
@@ -155,6 +182,7 @@ export async function ingestJobs(db: PrismaClient) {
     fetched,
     unique: jobs.length,
     created,
+    updated,
     refreshed: refreshed - created,
     listings: listings.length,
     multiSource: jobs.filter((j) => j.listings.length > 1).length,
