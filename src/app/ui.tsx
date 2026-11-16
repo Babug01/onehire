@@ -44,7 +44,14 @@ export function Logo({ name, domain, size = 42 }: { name: string; domain?: strin
   if (domain) {
     return (
       // eslint-disable-next-line @next/next/no-img-element -- served and cached by our own /api/logo route
-      <img className="logo logo-img" src={`/api/logo/${domain}`} alt="" width={size} height={size} loading="lazy" />
+      <img
+        className="logo logo-img"
+        src={`/api/logo/${domain}`}
+        alt=""
+        width={size}
+        height={size}
+        loading={size > 48 ? "eager" : "lazy"}
+      />
     );
   }
   return (
