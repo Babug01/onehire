@@ -275,6 +275,143 @@ a {
   font-weight: 800;
 }
 
+img.logo-img {
+  display: block;
+  object-fit: contain;
+  background: #fff;
+  border: 1px solid var(--border);
+  padding: 4px;
+}
+
+.company-section {
+  margin: 22px 0 30px;
+}
+
+.company-section h2 {
+  font-size: 1.05rem;
+  margin: 0 0 12px;
+}
+
+.company-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 10px;
+}
+
+.company-card {
+  display: grid;
+  grid-template-columns: 48px 1fr;
+  gap: 12px;
+  padding: 14px;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+}
+
+.company-card:hover {
+  border-color: var(--accent);
+}
+
+.company-card img.logo-img,
+.company-card .logo {
+  width: 48px;
+  height: 48px;
+}
+
+.company-card h3 {
+  margin: 0;
+  font-size: 1rem;
+}
+
+.company-card .muted {
+  font-size: 0.82rem;
+}
+
+.company-meta {
+  margin-top: 6px;
+  font-size: 0.85rem;
+}
+
+.company-meta span {
+  color: var(--muted);
+}
+
+.company-latest {
+  font-size: 0.78rem;
+  color: #b45309;
+  margin-top: 2px;
+}
+
+.company-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.company-list a {
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--card);
+  text-decoration: none;
+  font-size: 0.85rem;
+}
+
+.company-list a span {
+  color: var(--accent-dark);
+  font-weight: 700;
+  margin-left: 2px;
+}
+
+.search-main-short {
+  grid-template-columns: 1fr auto;
+  max-width: 720px;
+}
+
+.company-hero .search-sub a {
+  color: #fff;
+}
+
+.hero-back {
+  display: inline-block;
+  margin-bottom: 12px;
+  color: #c9d4e5;
+  text-decoration: none;
+  font-size: 0.9rem;
+}
+
+.company-head {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.company-head img.logo-img,
+.company-head .logo {
+  width: 72px;
+  height: 72px;
+  border-radius: 16px;
+  font-size: 1.8rem;
+}
+
+.company-head h1 {
+  margin: 0 0 4px;
+}
+
+.company-hero .btn.secondary {
+  background: transparent;
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.company-jobs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+  gap: 10px;
+  margin: 18px 0 40px;
+}
+
 .job-card h2 {
   margin: 0;
   font-size: 1rem;

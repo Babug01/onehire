@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { JobCardData, JobDetailData } from "@/lib/jobs";
+import { companySlug, type JobCardData, type JobDetailData } from "@/lib/jobs";
 import { COUNTRIES } from "@/lib/options";
 
 const DAY = 86_400_000;
@@ -40,10 +40,16 @@ function Tags({ job }: { job: { visa: boolean; relocation: boolean; languages: s
   );
 }
 
-function Logo({ name }: { name: string }) {
+export function Logo({ name, domain, size = 42 }: { name: string; domain?: string; size?: number }) {
+  if (domain) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- served and cached by our own /api/logo route
+      <img className="logo logo-img" src={`/api/logo/${domain}`} alt="" width={size} height={size} loading="lazy" />
+    );
+  }
   return (
     <div className="logo" aria-hidden="true">
-      {name.charAt(0).toUpperCase()}
+      {(name.match(/[A-Za-z0-9]/)?.[0] ?? "?").toUpperCase()}
     </div>
   );
 }
@@ -52,7 +58,7 @@ export function JobCard({ job, href, selected }: { job: JobCardData; href: strin
   const sites = job.listings.map((l) => l.sourceName);
   return (
     <Link href={href} className={`job-card${selected ? " selected" : ""}`} aria-current={selected ? "true" : undefined}>
-      <Logo name={job.company} />
+      <Logo name={job.company} domain={job.companyDomain} />
       <div className="job-card-body">
         <h2>{job.title}</h2>
         <div className="job-card-company">
@@ -87,7 +93,7 @@ export function JobDetail({ job, fullPageHref }: { job: JobDetailData; fullPageH
   return (
     <article className="job-detail">
       <header className="detail-head">
-        <Logo name={job.company} />
+        <Logo name={job.company} domain={job.companyDomain} />
         <div>
           <h1>{job.title}</h1>
           <div className="detail-company">
@@ -190,7 +196,7 @@ export function JobDetail({ job, fullPageHref }: { job: JobDetailData; fullPageH
               {job.companyDomain}
             </a>
           )}
-          <Link href={`/?company=${encodeURIComponent(job.company)}`}>
+          <Link href={`/company/${companySlug(job.company)}`}>
             {job.companyJobs} open {job.companyJobs === 1 ? "job" : "jobs"} in Europe
           </Link>
         </p>

@@ -62,6 +62,7 @@ const cardSelect = {
   id: true,
   title: true,
   company: true,
+  companyDomain: true,
   companyIndustry: true,
   city: true,
   country: true,
@@ -161,4 +162,78 @@ export async function getJob(id: string): Promise<JobDetailData | null> {
   if (!job) return null;
   const companyJobs = await db.job.count({ where: { company: job.company, lastSeenAt: { gte: fresh() } } });
   return { ...job, companyJobs };
+}
+
+export const companySlug = (name: string) =>
+  name
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "company";
+
+export type CompanySummary = {
+  name: string;
+  slug: string;
+  domain: string;
+  industry: string;
+  jobs: number;
+  countries: string[];
+  latest: Date;
+};
+
+/** Every company with open jobs, most jobs first. */
+export async function listCompanies(): Promise<CompanySummary[]> {
+  const db = getDb();
+  if (!db) return [];
+  const where = { lastSeenAt: { gte: fresh() } };
+  const [rows, byCountry] = await Promise.all([
+    db.job.groupBy({
+      by: ["company", "companyDomain", "companyIndustry"],
+      where,
+      _count: { _all: true },
+      _max: { postedAt: true },
+    }),
+    db.job.groupBy({ by: ["company", "country"], where, _count: { _all: true } }),
+  ]);
+  const map = new Map<string, CompanySummary>();
+  for (const r of rows) {
+    const c = map.get(r.company) ?? {
+      name: r.company,
+      slug: companySlug(r.company),
+      domain: "",
+      industry: "",
+      jobs: 0,
+      countries: [],
+      latest: new Date(0),
+    };
+    c.jobs += r._count._all;
+    c.domain ||= r.companyDomain;
+    c.industry ||= r.companyIndustry;
+    if (r._max.postedAt && r._max.postedAt > c.latest) c.latest = r._max.postedAt;
+    map.set(r.company, c);
+  }
+  for (const r of byCountry.sort((a, b) => b._count._all - a._count._all)) map.get(r.company)?.countries.push(r.country);
+  return [...map.values()].sort((a, b) => b.jobs - a.jobs || a.name.localeCompare(b.name));
+}
+
+/** One company's open jobs plus a role and country breakdown. */
+export async function getCompany(slug: string) {
+  const db = getDb();
+  if (!db || !/^[a-z0-9-]{1,100}$/.test(slug)) return null;
+  const summary = (await listCompanies()).find((c) => c.slug === slug);
+  if (!summary) return null;
+  const where = { company: summary.name, lastSeenAt: { gte: fresh() } };
+  const [jobs, byCategory, byCountry] = await Promise.all([
+    db.job.findMany({ where, orderBy: [{ postedAt: "desc" }, { id: "asc" }], take: 300, select: cardSelect }),
+    db.job.groupBy({ by: ["category"], where, _count: { _all: true } }),
+    db.job.groupBy({ by: ["country"], where, _count: { _all: true } }),
+  ]);
+  const byCount = (a: [string, number], b: [string, number]) => b[1] - a[1];
+  return {
+    ...summary,
+    jobList: jobs,
+    categories: byCategory.map((r): [string, number] => [r.category, r._count._all]).sort(byCount),
+    countryCounts: byCountry.map((r): [string, number] => [r.country, r._count._all]).sort(byCount),
+  };
 }
